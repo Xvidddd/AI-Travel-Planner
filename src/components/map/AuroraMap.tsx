@@ -4,12 +4,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePlannerStore } from "@/lib/store/planner";
 import { useAmapLoader } from "@/lib/hooks/useAmap";
 import { cn } from "@/components/ui/cn";
+import { extractLocationQueries } from "@/lib/utils/location";
 
 interface AuroraMapProps {
   className?: string;
 }
 
 type LatLngTuple = [number, number];
+
+type MarkerSeed = {
+  label: string;
+  day: number;
+  coord?: LatLngTuple;
+  queries: string[];
+};
 
 const DEFAULT_CENTER: LatLngTuple = [116.397428, 39.90923];
 const MAX_GEOCODE_BATCH = 8;
@@ -26,14 +34,49 @@ export function AuroraMap({ className }: AuroraMapProps) {
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
 
   const markerSeeds = useMemo(() => {
-    if (!itinerary) return [] as Array<{ label: string; day: number; query: string }>;
-    return itinerary.itinerary.flatMap((day) =>
-      day.activities.map((activity) => ({
-        label: activity.title,
-        day: day.day,
-        query: `${itinerary.destination} ${activity.detail ?? activity.title}`,
-      })),
+    if (!itinerary) return [] as MarkerSeed[];
+
+    const seeds: MarkerSeed[] = itinerary.itinerary.flatMap((day) =>
+      day.activities.map((activity) => {
+        const coord =
+          typeof activity.lng === "number" && typeof activity.lat === "number"
+            ? ([activity.lng, activity.lat] as LatLngTuple)
+            : undefined;
+        const rawQueries = coord
+          ? []
+          : extractLocationQueries(
+              itinerary.destination,
+              activity.poi,
+              activity.address,
+              activity.detail,
+              activity.title,
+            );
+        const queries = rawQueries.map((query) => query.trim()).filter(Boolean);
+        return {
+          label: activity.poi ?? activity.title,
+          day: day.day,
+          coord,
+          queries: (queries.length ? queries : [itinerary.destination]).map((query) =>
+            query.trim(),
+          ),
+        };
+      }),
     );
+
+    if (!seeds.length && itinerary.destination) {
+      seeds.push({
+        label: itinerary.destination,
+        day: 1,
+        coord: undefined,
+        queries: [itinerary.destination],
+      });
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      console.debug("AuroraMap marker seeds", seeds);
+    }
+
+    return seeds;
   }, [itinerary]);
 
   useEffect(() => {
@@ -72,12 +115,21 @@ export function AuroraMap({ className }: AuroraMapProps) {
       return;
     }
 
-    const uniqueQueries = Array.from(
-      new Set(markerSeeds.map((seed) => seed.query.trim()).filter(Boolean)),
-    ).slice(0, MAX_GEOCODE_BATCH);
+    const querySet = new Set<string>();
+    markerSeeds
+      .filter((seed) => !seed.coord)
+      .forEach((seed) => {
+        seed.queries.forEach((query) => {
+          if (query) {
+            querySet.add(query);
+          }
+        });
+      });
+
+    const uniqueQueries = Array.from(querySet).slice(0, MAX_GEOCODE_BATCH);
 
     if (!uniqueQueries.length) {
-      setCoordinates({});
+      setGeocodeError(null);
       return;
     }
 
@@ -93,6 +145,9 @@ export function AuroraMap({ className }: AuroraMapProps) {
           return;
         }
         setGeocodeError(null);
+        if (process.env.NODE_ENV !== "production") {
+          console.debug("Amap geocode coordinates", data.coordinates);
+        }
         setCoordinates(data.coordinates ?? {});
       })
       .catch(() => {
@@ -138,7 +193,11 @@ export function AuroraMap({ className }: AuroraMapProps) {
     }
 
     const markers = markerSeeds.map((seed, index) => {
-      const coordinate = coordinates[seed.query];
+      const coordinate =
+        seed.coord ||
+        seed.queries
+          .map((query) => coordinates[query])
+          .find((value): value is LatLngTuple => Array.isArray(value));
       const position = coordinate ?? generateOffsetPosition(center, index);
       return new window.AMap.Marker({
         position,

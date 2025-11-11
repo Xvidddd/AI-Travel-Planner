@@ -31,8 +31,18 @@ async function requestPlan(form: {
 
   const data = (await res.json()) as {
     summary: string;
-    budget: number;
-    days: Array<{ day: number; focus: string; items: string[] }>;
+    days: Array<{
+      day: number;
+      focus: string;
+      items: Array<{
+        title?: string;
+        detail?: string;
+        poi?: string;
+        address?: string;
+        lat?: number;
+        lng?: number;
+      }>;
+    }>;
   };
 
   const plan: ItineraryPlan = {
@@ -46,9 +56,13 @@ async function requestPlan(form: {
       day: day.day,
       summary: day.focus,
       activities: day.items.map((item, index) => ({
-        title: `活动 ${index + 1}`,
-        detail: item,
+        title: item.title ?? `活动 ${index + 1}`,
+        detail: item.detail ?? item.title ?? "AI 生成内容",
         time: `Day ${day.day}`,
+        poi: item.poi,
+        address: item.address,
+        lat: typeof item.lat === "number" ? item.lat : undefined,
+        lng: typeof item.lng === "number" ? item.lng : undefined,
       })),
     })),
     currency: "CNY",

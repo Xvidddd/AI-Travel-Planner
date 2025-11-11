@@ -56,14 +56,31 @@ export async function POST(request: Request) {
     const activitiesPayload = payload.itinerary.flatMap((day) => {
       const dayId = dayIdMap.get(day.day);
       if (!dayId) return [];
-      return day.activities.map((activity) => ({
-        day_id: dayId,
-        type: activity.location ? "poi" : "custom",
-        title: activity.title,
-        detail: activity.detail,
-        start_time: activity.time,
-        cost_estimate: activity.costEstimate ?? null,
-      }));
+      return day.activities.map((activity) => {
+        const hasCoord = typeof activity.lat === "number" && typeof activity.lng === "number";
+        const hasPlaceMeta = Boolean(activity.poi || activity.address);
+        return {
+          day_id: dayId,
+          type: hasPlaceMeta ? "poi" : "custom",
+          title: activity.title,
+          detail: activity.detail,
+          start_time: activity.time,
+          cost_estimate: activity.costEstimate ?? null,
+          location: hasCoord
+            ? {
+                lat: activity.lat,
+                lng: activity.lng,
+                poi: activity.poi,
+                address: activity.address,
+              }
+            : hasPlaceMeta
+              ? {
+                  poi: activity.poi,
+                  address: activity.address,
+                }
+              : null,
+        };
+      });
     });
 
     if (activitiesPayload.length > 0) {

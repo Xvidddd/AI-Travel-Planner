@@ -1,9 +1,18 @@
 import "server-only";
 
+type PlannerLLMActivity = {
+  title: string;
+  detail: string;
+  poi?: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+};
+
 type PlannerLLMDay = {
   day: number;
   focus: string;
-  items: string[];
+  items: PlannerLLMActivity[];
 };
 
 export type PlannerPayload = {
@@ -32,7 +41,13 @@ export async function generateItinerary(payload: PlannerPayload): Promise<Planne
     days: Array.from({ length: payload.days }).map((_, index) => ({
       day: index + 1,
       focus: "探索城市 + 亲子活动",
-      items: ["AI 生成内容占位"],
+      items: [
+        {
+          title: "AI 生成内容占位",
+          detail: "占位描述",
+          poi: payload.destination,
+        },
+      ],
     })),
   };
 }
@@ -47,7 +62,27 @@ async function callDeepseek(payload: PlannerPayload): Promise<PlannerLLMResponse
   }
 
   const userPrompt = `目的地：${payload.destination}\n出行天数：${payload.days}\n预算：${payload.budget}\n同行角色：${payload.personas.join(", ")}\n偏好：${payload.preferences.join(", ")}`;
-  const systemPrompt = "你是 AuroraVoyage 的 AI 旅行规划师，请使用自然中文，用 JSON 描述每天的行程。";
+  const systemPrompt = `你是 AuroraVoyage 的 AI 旅行规划师，需要返回严格的 JSON，字段含义如下：
+{
+  "summary": string,
+  "days": [
+    {
+      "day": number,
+      "focus": string,
+      "items": [
+        {
+          "title": string,
+          "detail": string,
+          "poi": string (必须是真实地点或景点名称),
+          "address": string,
+          "lat": number (可选，没有则留空),
+          "lng": number (可选，没有则留空)
+        }
+      ]
+    }
+  ]
+}
+若无法提供精确经纬度，可留空 lat/lng，但必须提供可用于地图定位的 poi 或 address。`;
 
   const body = {
     model,
@@ -56,7 +91,7 @@ async function callDeepseek(payload: PlannerPayload): Promise<PlannerLLMResponse
     messages: [
       {
         role: "system" as const,
-        content: `${systemPrompt} 返回格式：{"summary": string, "days": [{"day": number, "focus": string, "items": string[]}]}。不要输出额外文本。`,
+        content: systemPrompt,
       },
       { role: "user" as const, content: userPrompt },
     ],
@@ -92,10 +127,22 @@ async function callDeepseek(payload: PlannerPayload): Promise<PlannerLLMResponse
       days: parsed.days.map((day, index) => ({
         day: day.day ?? index + 1,
         focus: day.focus ?? "AI 行程亮点",
-        items: day.items?.length ? day.items : ["AI 生成内容"],
+        items: (day.items ?? []).map((item, itemIndex) => ({
+          title: item.title ?? `活动 ${itemIndex + 1}`,
+          detail: item.detail ?? item.title ?? "AI 生成内容",
+          poi: item.poi,
+          address: item.address,
+          lat: sanitizeNumber(item.lat),
+          lng: sanitizeNumber(item.lng),
+        })),
       })),
     };
   } catch (error) {
     throw new Error(`DeepSeek 响应解析失败：${(error as Error).message}`);
   }
+}
+
+function sanitizeNumber(value: unknown): number | undefined {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : undefined;
 }

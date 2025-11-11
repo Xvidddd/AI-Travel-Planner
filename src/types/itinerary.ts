@@ -6,6 +6,10 @@ export interface ActivityItem {
   time: string;
   location?: string;
   costEstimate?: number;
+  poi?: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
 }
 
 export interface DayPlan {

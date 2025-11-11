@@ -17,9 +17,13 @@ export async function createItinerary(payload: PlannerPayload): Promise<Itinerar
       day: day.day,
       summary: day.focus,
       activities: day.items.map((item, index) => ({
-        title: `活动 ${index + 1}`,
-        detail: item,
+        title: item.title ?? `活动 ${index + 1}`,
+        detail: item.detail ?? item.title ?? "AI 生成内容",
         time: `Day ${day.day}`,
+        poi: item.poi,
+        address: item.address,
+        lat: typeof item.lat === "number" ? item.lat : undefined,
+        lng: typeof item.lng === "number" ? item.lng : undefined,
       })),
     })),
   };

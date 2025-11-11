@@ -8,7 +8,7 @@
 - ✅ 自定义布局（AuroraLayout）、地图/时间线/预算面板
 - ✅ Voice Console + Planner 表单，驱动 Zustand Store
 - ✅ API Status / Plan 路由、DeepSeek 调用与 Supabase Provider
-- ✅ 高德地图 JS SDK（AuroraMap）联动行程标记
+- ✅ DeepSeek 结构化 POI 输出 + 高德 AuroraMap 实际落点（缺经纬度时自动地理编码）
 - ✅ 环境变量模板 `.env.example`
 - ✅ Dockerfile + docker-compose + 脚本化 setup/dev/check
 
