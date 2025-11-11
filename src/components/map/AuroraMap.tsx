@@ -31,6 +31,7 @@ export function AuroraMap({ className }: AuroraMapProps) {
   const [center, setCenter] = useState<LatLngTuple>(DEFAULT_CENTER);
   const [geoStatus, setGeoStatus] = useState<string | null>(null);
   const [coordinates, setCoordinates] = useState<Record<string, LatLngTuple>>({});
+  const [lastFocusedSeedIndex, setLastFocusedSeedIndex] = useState<number | null>(null);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
 
   const markerSeeds = useMemo(() => {
@@ -88,7 +89,7 @@ export function AuroraMap({ className }: AuroraMapProps) {
       const mapStyle = process.env.NEXT_PUBLIC_MAP_STYLE;
       mapInstance.current = new window.AMap.Map(mapRef.current, {
         viewMode: "3D",
-        zoom: 11,
+        zoom: 9,
         center,
         mapStyle: mapStyle ? `amap://styles/${mapStyle}` : undefined,
       });
@@ -192,6 +193,8 @@ export function AuroraMap({ className }: AuroraMapProps) {
       return;
     }
 
+    let firstCoordinate: LatLngTuple | undefined;
+
     const markers = markerSeeds.map((seed, index) => {
       const coordinate =
         seed.coord ||
@@ -199,6 +202,9 @@ export function AuroraMap({ className }: AuroraMapProps) {
           .map((query) => coordinates[query])
           .find((value): value is LatLngTuple => Array.isArray(value));
       const position = coordinate ?? generateOffsetPosition(center, index);
+      if (!firstCoordinate && coordinate) {
+        firstCoordinate = coordinate;
+      }
       return new window.AMap.Marker({
         position,
         offset: new window.AMap.Pixel(-10, -10),
@@ -212,7 +218,13 @@ export function AuroraMap({ className }: AuroraMapProps) {
 
     mapInstance.current.add(markers);
     markersRef.current = markers;
-  }, [center, coordinates, isReady, markerSeeds]);
+
+    if (firstCoordinate && mapInstance.current && lastFocusedSeedIndex !== markerSeeds.length) {
+      mapInstance.current.setZoom(9);
+      mapInstance.current.setCenter(firstCoordinate);
+      setLastFocusedSeedIndex(markerSeeds.length);
+    }
+  }, [center, coordinates, isReady, lastFocusedSeedIndex, markerSeeds]);
 
   return (
     <div className={cn("relative h-full w-full", className)}>
