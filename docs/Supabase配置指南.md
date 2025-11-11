@@ -10,9 +10,11 @@
 NEXT_PUBLIC_SUPABASE_URL=<Project URL>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
 SUPABASE_SERVICE_ROLE_KEY=<service role key>
+SUPABASE_DEMO_USER_ID=<可选：用于无登录情况下写入的用户 ID>
 ```
 - `NEXT_PUBLIC_*` 变量用于前端（匿名访问受 RLS 保护的数据）。
 - `SUPABASE_SERVICE_ROLE_KEY` 仅在服务器端使用，例如 Server Actions / Edge Functions 进行受信操作，切勿暴露到浏览器。
+- `SUPABASE_DEMO_USER_ID`：开发阶段可填一个测试账号的 `auth.users.id`，`/api/itineraries` 会在没有登录态时使用该 ID 写入行程。
 
 ## 3. 数据库 Schema
 根据 `docs/需求规格说明.md` 建议，创建以下表（可使用 Supabase SQL editor）：

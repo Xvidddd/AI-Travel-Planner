@@ -15,6 +15,7 @@ export interface DayPlan {
 }
 
 export interface ItineraryPlan {
+  id?: string;
   destination: string;
   days: number;
   budget: number;
@@ -22,4 +23,7 @@ export interface ItineraryPlan {
   preferences: PreferenceTag[];
   summary: string;
   itinerary: DayPlan[];
+  currency?: string;
+  title?: string;
+  userId?: string;
 }

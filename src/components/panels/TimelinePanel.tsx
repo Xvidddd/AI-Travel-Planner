@@ -1,3 +1,5 @@
+"use client";
+
 import { usePlannerStore } from "@/lib/store/planner";
 
 const demoItinerary = [

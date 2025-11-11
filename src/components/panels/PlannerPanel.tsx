@@ -51,15 +51,34 @@ async function requestPlan(form: {
         time: `Day ${day.day}`,
       })),
     })),
+    currency: "CNY",
+    title: `${payload.destination} AI 行程`,
   };
 
   return plan;
+}
+
+async function persistPlan(plan: ItineraryPlan) {
+  const res = await fetch("/api/itineraries", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(plan),
+  });
+
+  const json = (await res.json().catch(() => ({}))) as { itineraryId?: string; error?: string };
+
+  if (!res.ok) {
+    throw new Error(json?.error ?? "Supabase 持久化失败");
+  }
+
+  return json;
 }
 
 export function PlannerPanel() {
   const { form, setField, setItinerary } = usePlannerStore();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -77,8 +96,23 @@ export function PlannerPanel() {
       try {
         const plan = await requestPlan(nextForm);
         setItinerary(plan);
+        setStatus("AI 行程生成成功，正在写入 Supabase...");
+        try {
+          const { itineraryId } = await persistPlan(plan);
+          if (itineraryId) {
+            setStatus(`已保存至 Supabase (ID: ${itineraryId.slice(0, 8)}…)`);
+          } else {
+            setStatus("AI 行程生成成功，但未返回行程 ID");
+          }
+        } catch (persistError) {
+          console.error(persistError);
+          const message =
+            persistError instanceof Error ? persistError.message : "未知原因";
+          setStatus(`AI 行程生成成功，但写入 Supabase 失败：${message}`);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "未知错误");
+        setStatus(null);
       }
     });
   };
@@ -143,6 +177,7 @@ export function PlannerPanel() {
           />
         </label>
         {error && <p className="text-sm text-red-500">{error}</p>}
+        {status && !error && <p className="text-sm text-emerald-600">{status}</p>}
         <button
           type="submit"
           disabled={isPending}
