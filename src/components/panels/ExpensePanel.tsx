@@ -1,21 +1,55 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { usePlannerStore } from "@/lib/store/planner";
 import { useAuth } from "@/components/auth/AuthProvider";
-import type { ExpenseCategory } from "@/types/expense";
+import type { ExpenseCategory, ExpenseEntry } from "@/types/expense";
 
 const categories: ExpenseCategory[] = ["餐饮", "交通", "住宿", "娱乐", "购物", "其他"];
 
 export function ExpensePanel() {
   const expenses = usePlannerStore((state) => state.expenses);
   const addExpense = usePlannerStore((state) => state.addExpense);
-  const { user } = useAuth();
+  const setExpenses = usePlannerStore((state) => state.setExpenses);
+  const { user, loading: authLoading } = useAuth();
   const [category, setCategory] = useState<ExpenseCategory>("餐饮");
   const [amount, setAmount] = useState(0);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [loadingExpenses, setLoadingExpenses] = useState(false);
+
+  useEffect(() => {
+    if (authLoading || !user?.id) return;
+    let cancelled = false;
+    const load = async () => {
+      setLoadingExpenses(true);
+      try {
+        const res = await fetch(`/api/expenses?userId=${user.id}`);
+        const data = (await res.json()) as {
+          expenses?: ExpenseEntry[];
+          warning?: string;
+          error?: string;
+        };
+        if (res.ok && data.expenses) {
+          setExpenses(data.expenses);
+          if (data.warning && !cancelled) {
+            setStatus(data.warning);
+          }
+        } else if (!cancelled) {
+          setStatus(data.error ?? "加载记账记录失败");
+        }
+      } catch (error) {
+        if (!cancelled) setStatus((error as Error).message);
+      } finally {
+        if (!cancelled) setLoadingExpenses(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, setExpenses, user]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -117,7 +151,8 @@ export function ExpensePanel() {
             </div>
           </div>
         ))}
-        {!expenses.length && <p className="text-xs text-slate-400">暂无记账记录</p>}
+        {!loadingExpenses && !expenses.length && <p className="text-xs text-slate-400">暂无记账记录</p>}
+        {loadingExpenses && <p className="text-xs text-slate-400">加载中...</p>}
       </div>
     </section>
   );

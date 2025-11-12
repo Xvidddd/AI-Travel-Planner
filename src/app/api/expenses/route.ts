@@ -51,3 +51,41 @@ export async function POST(request: Request) {
     return NextResponse.json({ expense: entry, warning: (error as Error).message }, { status: 200 });
   }
 }
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get("userId");
+  if (!userId) {
+    return NextResponse.json({ error: "缺少用户身份" }, { status: 401 });
+  }
+
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    return NextResponse.json({ expenses: [], warning: "Supabase 未配置" });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("expenses")
+      .select("id, category, amount, note, inserted_at")
+      .eq("user_id", userId)
+      .order("inserted_at", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      throw error;
+    }
+
+    const expenses: ExpenseEntry[] = (data ?? []).map((row) => ({
+      id: row.id,
+      category: row.category,
+      amount: row.amount,
+      note: row.note ?? undefined,
+      createdAt: row.inserted_at,
+    }));
+
+    return NextResponse.json({ expenses });
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
+}
