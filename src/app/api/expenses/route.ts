@@ -8,10 +8,11 @@ export async function POST(request: Request) {
     amount?: number;
     note?: string;
     userId?: string;
+    itineraryId?: string;
   } | null;
 
-  if (!body || typeof body.amount !== "number" || !body.category) {
-    return NextResponse.json({ error: "缺少金额或分类" }, { status: 400 });
+  if (!body || typeof body.amount !== "number" || !body.category || !body.itineraryId) {
+    return NextResponse.json({ error: "缺少金额、分类或行程信息" }, { status: 400 });
   }
 
   const supabase = createSupabaseAdminClient();
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
     const { error } = await supabase.from("expenses").insert({
       id: entry.id,
       user_id: userId,
+      itinerary_id: body.itineraryId,
       category: entry.category,
       amount: entry.amount,
       note: entry.note,
@@ -55,8 +57,12 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId");
+  const itineraryId = searchParams.get("itineraryId");
   if (!userId) {
     return NextResponse.json({ error: "缺少用户身份" }, { status: 401 });
+  }
+  if (!itineraryId) {
+    return NextResponse.json({ error: "缺少行程信息" }, { status: 400 });
   }
 
   const supabase = createSupabaseAdminClient();
@@ -69,6 +75,7 @@ export async function GET(request: Request) {
       .from("expenses")
       .select("id, category, amount, note, inserted_at")
       .eq("user_id", userId)
+      .eq("itinerary_id", itineraryId)
       .order("inserted_at", { ascending: false })
       .limit(20);
 
@@ -96,9 +103,13 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Supabase 未配置" }, { status: 500 });
   }
 
-  const body = (await request.json().catch(() => null)) as { id?: string; userId?: string } | null;
-  if (!body?.id || !body.userId) {
-    return NextResponse.json({ error: "缺少 id 或用户信息" }, { status: 400 });
+  const body = (await request.json().catch(() => null)) as {
+    id?: string;
+    userId?: string;
+    itineraryId?: string;
+  } | null;
+  if (!body?.id || !body.userId || !body.itineraryId) {
+    return NextResponse.json({ error: "缺少参数" }, { status: 400 });
   }
 
   try {
@@ -106,7 +117,8 @@ export async function DELETE(request: Request) {
       .from("expenses")
       .delete()
       .eq("id", body.id)
-      .eq("user_id", body.userId);
+      .eq("user_id", body.userId)
+      .eq("itinerary_id", body.itineraryId);
     if (error) throw error;
     return NextResponse.json({ success: true });
   } catch (error) {

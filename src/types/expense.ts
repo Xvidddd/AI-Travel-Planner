@@ -13,3 +13,11 @@ export interface ExpenseEntry {
   note?: string;
   createdAt: string;
 }
+
+export interface BudgetSnapshot {
+  total: number;
+  used: number;
+  remaining: number;
+  usagePercent: number;
+  byCategory: Record<ExpenseCategory, number>;
+}

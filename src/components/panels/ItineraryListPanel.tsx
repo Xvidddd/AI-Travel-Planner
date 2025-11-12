@@ -15,6 +15,7 @@ interface SavedItinerarySummary {
 export function ItineraryListPanel() {
   const { user } = useAuth();
   const setItinerary = usePlannerStore((state) => state.setItinerary);
+  const updateBudgetSnapshot = usePlannerStore((state) => state.updateBudgetSnapshot);
   const refreshToken = usePlannerStore((state) => state.itineraryRefreshKey);
   const [list, setList] = useState<SavedItinerarySummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -63,6 +64,7 @@ export function ItineraryListPanel() {
         throw new Error(data.error ?? "未能加载行程");
       }
       setItinerary(data.itinerary);
+      updateBudgetSnapshot(data.itinerary?.budget ?? 0);
       setStatus("行程已加载");
     } catch (error) {
       setStatus((error as Error).message);

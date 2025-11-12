@@ -4,15 +4,18 @@ import { FormEvent, useEffect, useState } from "react";
 import { usePlannerStore } from "@/lib/store/planner";
 import { useAuth } from "@/components/auth/AuthProvider";
 import type { ExpenseCategory, ExpenseEntry } from "@/types/expense";
+import { VoiceExpenseConsole } from "@/components/voice/VoiceExpenseConsole";
 
 const categories: ExpenseCategory[] = ["餐饮", "交通", "住宿", "娱乐", "购物", "其他"];
 
 export function ExpensePanel() {
   const expenses = usePlannerStore((state) => state.expenses);
   const addExpense = usePlannerStore((state) => state.addExpense);
-  const setExpenses = usePlannerStore((state) => state.setExpenses);
-  const removeExpense = usePlannerStore((state) => state.removeExpense);
+  const setExpensesStore = usePlannerStore((state) => state.setExpenses);
+  const removeExpenseStore = usePlannerStore((state) => state.removeExpense);
+  const activeItineraryId = usePlannerStore((state) => state.activeItineraryId);
   const { user, loading: authLoading } = useAuth();
+
   const [category, setCategory] = useState<ExpenseCategory>("餐饮");
   const [amount, setAmount] = useState(0);
   const [note, setNote] = useState("");
@@ -21,22 +24,24 @@ export function ExpensePanel() {
   const [loadingExpenses, setLoadingExpenses] = useState(false);
 
   useEffect(() => {
-    if (authLoading || !user?.id) return;
+    if (authLoading) return;
+    if (!user?.id || !activeItineraryId) {
+      setExpensesStore([]);
+      return;
+    }
     let cancelled = false;
     const load = async () => {
       setLoadingExpenses(true);
       try {
-        const res = await fetch(`/api/expenses?userId=${user.id}`);
+        const res = await fetch(`/api/expenses?userId=${user.id}&itineraryId=${activeItineraryId}`);
         const data = (await res.json()) as {
           expenses?: ExpenseEntry[];
           warning?: string;
           error?: string;
         };
         if (res.ok && data.expenses) {
-          setExpenses(data.expenses);
-          if (data.warning && !cancelled) {
-            setStatus(data.warning);
-          }
+          if (!cancelled) setExpensesStore(data.expenses);
+          if (data.warning && !cancelled) setStatus(data.warning);
         } else if (!cancelled) {
           setStatus(data.error ?? "加载记账记录失败");
         }
@@ -50,29 +55,32 @@ export function ExpensePanel() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, setExpenses, user]);
+  }, [activeItineraryId, authLoading, setExpensesStore, user]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!user?.id) {
+      setStatus("请先登录再记账");
+      return;
+    }
+    if (!activeItineraryId) {
+      setStatus("请选择一个行程后再记账");
+      return;
+    }
     if (amount <= 0) {
       setStatus("金额需大于 0");
       return;
     }
     setSubmitting(true);
     setStatus("记录中...");
-    if (!user?.id) {
-      setStatus("请先登录再记账");
-      setSubmitting(false);
-      return;
-    }
     try {
       const res = await fetch("/api/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, amount, note, userId: user.id }),
+        body: JSON.stringify({ category, amount, note, userId: user.id, itineraryId: activeItineraryId }),
       });
-      const data = (await res.json()) as { expense?: any; error?: string; warning?: string };
-      if (data.expense) {
+      const data = (await res.json()) as { expense?: ExpenseEntry; error?: string; warning?: string };
+      if (res.ok && data.expense) {
         addExpense(data.expense);
         setStatus(data.warning ? `已记录（警告：${data.warning})` : "已记录");
         setAmount(0);
@@ -88,21 +96,23 @@ export function ExpensePanel() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!user?.id) {
+    if (!user?.id || !activeItineraryId) {
       setStatus("请先登录");
       return;
     }
-    removeExpense(id);
+    removeExpenseStore(id);
     try {
       await fetch("/api/expenses", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, userId: user.id }),
+        body: JSON.stringify({ id, userId: user.id, itineraryId: activeItineraryId }),
       });
     } catch (error) {
       console.error("删除记账失败", error);
     }
   };
+
+  const disableForm = !user?.id || !activeItineraryId;
 
   return (
     <section className="rounded-2xl border border-white/70 bg-white/80 p-6 shadow-lg shadow-slate-200/40">
@@ -112,6 +122,9 @@ export function ExpensePanel() {
           <h3 className="text-xl font-semibold text-slate-800">语音记账 / 快速记账</h3>
         </div>
       </header>
+      {!activeItineraryId && (
+        <p className="mb-3 text-xs text-red-500">请先生成或加载某个行程，然后再进行记账。</p>
+      )}
       <form onSubmit={handleSubmit} className="grid gap-3 lg:grid-cols-[1.2fr_1.2fr_1fr]">
         <label className="text-sm text-slate-600">
           金额 (¥)
@@ -121,7 +134,8 @@ export function ExpensePanel() {
             step="0.01"
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
-            className="mt-1 w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-2 text-slate-700 focus:border-aurora-blue focus:outline-none"
+            disabled={disableForm}
+            className="mt-1 w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-2 text-slate-700 focus:border-aurora-blue focus:outline-none disabled:opacity-60"
           />
         </label>
         <label className="text-sm text-slate-600">
@@ -129,7 +143,8 @@ export function ExpensePanel() {
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-            className="mt-1 w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-2 text-slate-700 focus:border-aurora-blue focus:outline-none"
+            disabled={disableForm}
+            className="mt-1 w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-2 text-slate-700 focus:border-aurora-blue focus:outline-none disabled:opacity-60"
           >
             {categories.map((cat) => (
               <option key={cat} value={cat}>
@@ -143,19 +158,29 @@ export function ExpensePanel() {
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="mt-1 w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-2 text-slate-700 focus:border-aurora-blue focus:outline-none"
+            disabled={disableForm}
+            className="mt-1 w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-2 text-slate-700 focus:border-aurora-blue focus:outline-none disabled:opacity-60"
             placeholder="例如：东京塔门票"
           />
         </label>
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || disableForm}
           className="rounded-2xl bg-gradient-to-r from-[#3B82F6] to-[#06B6D4] py-2 text-sm font-semibold text-white disabled:opacity-60 lg:col-span-3"
         >
           {submitting ? "记录中..." : "保存记账"}
         </button>
       </form>
       {status && <p className="mt-2 text-xs text-slate-500">{status}</p>}
+      <div className="mt-4">
+        <VoiceExpenseConsole
+          onParsed={(intent) => {
+            if (typeof intent.amount === "number") setAmount(intent.amount);
+            if (intent.category) setCategory(intent.category);
+            if (intent.note) setNote(intent.note);
+          }}
+        />
+      </div>
       <div className="mt-4 space-y-2 text-sm text-slate-600">
         {expenses.slice(0, 5).map((expense) => (
           <div

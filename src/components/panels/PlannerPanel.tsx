@@ -92,7 +92,12 @@ async function persistPlan(plan: ItineraryPlan, userId: string) {
 }
 
 export function PlannerPanel() {
-  const { form, setField, setItinerary, bumpItineraryRefresh } = usePlannerStore();
+  const form = usePlannerStore((state) => state.form);
+  const setField = usePlannerStore((state) => state.setField);
+  const setItinerary = usePlannerStore((state) => state.setItinerary);
+  const setExpensesStore = usePlannerStore((state) => state.setExpenses);
+  const updateBudgetSnapshot = usePlannerStore((state) => state.updateBudgetSnapshot);
+  const bumpItineraryRefresh = usePlannerStore((state) => state.bumpItineraryRefresh);
   const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -123,10 +128,13 @@ export function PlannerPanel() {
           title: nextForm.title || plan.title || `${nextForm.destination} 行程`,
         };
         setItinerary(titledPlan);
+        setExpensesStore([]);
+        updateBudgetSnapshot(titledPlan.budget);
         setStatus("AI 行程生成成功，正在写入 Supabase...");
         try {
           const { itineraryId } = await persistPlan(titledPlan, user.id);
           if (itineraryId) {
+            setItinerary({ ...titledPlan, id: itineraryId });
             setStatus(`已保存至 Supabase (ID: ${itineraryId.slice(0, 8)}…)`);
             bumpItineraryRefresh();
           } else {

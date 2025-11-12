@@ -1,5 +1,6 @@
 import "server-only";
 import { PlannerIntent } from "@/types/voice";
+import { ExpenseCategory } from "@/types/expense";
 
 type PlannerLLMActivity = {
   title: string;
@@ -27,6 +28,12 @@ export type PlannerPayload = {
 type PlannerLLMResponse = {
   summary: string;
   days: PlannerLLMDay[];
+};
+
+export type ExpenseIntent = {
+  category?: ExpenseCategory;
+  amount?: number;
+  note?: string;
 };
 
 const DEFAULT_PROVIDER = process.env.LLM_PROVIDER ?? "mock";
@@ -63,6 +70,18 @@ export async function parseVoiceToPlanner(transcript: string): Promise<PlannerIn
   }
 
   return fallbackIntent(transcript);
+}
+
+export async function parseVoiceToExpense(transcript: string): Promise<ExpenseIntent> {
+  if (!transcript.trim()) {
+    return {};
+  }
+
+  if (DEFAULT_PROVIDER === "deepseek") {
+    return callDeepseekExpenseIntent(transcript);
+  }
+
+  return fallbackExpenseIntent(transcript);
 }
 
 async function callDeepseek(payload: PlannerPayload): Promise<PlannerLLMResponse> {
@@ -241,4 +260,78 @@ function normalizeIntent(intent: PlannerIntent, fallbackText: string): PlannerIn
     personas: normalized.personas,
     preferences: normalized.preferences,
   };
+}
+
+async function callDeepseekExpenseIntent(transcript: string): Promise<ExpenseIntent> {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  const endpoint = process.env.DEEPSEEK_API_ENDPOINT ?? "https://api.deepseek.com/v1";
+  const model = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
+
+  if (!apiKey) {
+    throw new Error("缺少 DEEPSEEK_API_KEY，无法解析语音记账");
+  }
+
+  const systemPrompt = `你是记账助手。请把用户的一句话解析成 JSON:
+{
+  "category": "餐饮|交通|住宿|娱乐|购物|其他",
+  "amount": number,
+  "note": string
+}
+若金额无法确定，amount 留空，note 填完整描述。`;
+
+  const body = {
+    model,
+    temperature: 0.2,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system" as const, content: systemPrompt },
+      { role: "user" as const, content: transcript },
+    ],
+  };
+
+  const response = await fetch(`${endpoint}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`DeepSeek 记账解析失败：${response.status} ${errorText}`);
+  }
+
+  const completion = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  const content = completion.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error("DeepSeek 记账解析未返回内容");
+  }
+
+  const intent = JSON.parse(content) as ExpenseIntent;
+  return normalizeExpenseIntent(intent, transcript);
+}
+
+function fallbackExpenseIntent(transcript: string): ExpenseIntent {
+  const amount = Number(transcript.match(/\\d+(\\.\\d+)?/)?.[0] ?? NaN);
+  const categoryMatch = ["餐饮", "交通", "住宿", "娱乐", "购物", "其他"].find((keyword) =>
+    transcript.includes(keyword),
+  );
+  return normalizeExpenseIntent(
+    {
+      amount: Number.isFinite(amount) ? amount : undefined,
+      category: categoryMatch as ExpenseCategory | undefined,
+      note: transcript,
+    },
+    transcript,
+  );
+}
+
+function normalizeExpenseIntent(intent: ExpenseIntent, fallbackText: string): ExpenseIntent {
+  const normalized: ExpenseIntent = {};
+  if (intent.category) normalized.category = intent.category;
+  if (typeof intent.amount === "number" && intent.amount > 0) normalized.amount = intent.amount;
+  normalized.note = intent.note?.trim() || fallbackText;
+  return normalized;
 }
