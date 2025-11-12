@@ -92,7 +92,7 @@ async function persistPlan(plan: ItineraryPlan, userId: string) {
 }
 
 export function PlannerPanel() {
-  const { form, setField, setItinerary } = usePlannerStore();
+  const { form, setField, setItinerary, bumpItineraryRefresh } = usePlannerStore();
   const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -128,6 +128,7 @@ export function PlannerPanel() {
           const { itineraryId } = await persistPlan(titledPlan, user.id);
           if (itineraryId) {
             setStatus(`已保存至 Supabase (ID: ${itineraryId.slice(0, 8)}…)`);
+            bumpItineraryRefresh();
           } else {
             setStatus("AI 行程生成成功，但未返回行程 ID");
           }

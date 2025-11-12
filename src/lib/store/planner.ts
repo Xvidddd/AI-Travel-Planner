@@ -25,6 +25,8 @@ type PlannerStore = {
   addExpense: (expense: ExpenseEntry) => void;
   setExpenses: (expenses: ExpenseEntry[]) => void;
   removeExpense: (id: string) => void;
+  itineraryRefreshKey: number;
+  bumpItineraryRefresh: () => void;
   reset: () => void;
 };
 
@@ -65,6 +67,11 @@ export const usePlannerStore = create<PlannerStore>((set) => ({
   removeExpense: (id) =>
     set((state) => ({
       expenses: state.expenses.filter((expense) => expense.id !== id),
+    })),
+  itineraryRefreshKey: 0,
+  bumpItineraryRefresh: () =>
+    set((state) => ({
+      itineraryRefreshKey: state.itineraryRefreshKey + 1,
     })),
   reset: () => set({ form: defaultForm, transcript: defaultForm.destination, itinerary: undefined }),
 }));

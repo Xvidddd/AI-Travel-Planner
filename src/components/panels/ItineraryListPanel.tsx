@@ -15,6 +15,7 @@ interface SavedItinerarySummary {
 export function ItineraryListPanel() {
   const { user } = useAuth();
   const setItinerary = usePlannerStore((state) => state.setItinerary);
+  const refreshToken = usePlannerStore((state) => state.itineraryRefreshKey);
   const [list, setList] = useState<SavedItinerarySummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -47,7 +48,7 @@ export function ItineraryListPanel() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [refreshToken, user]);
 
   const handleLoad = async (id: string) => {
     if (!user?.id) {
