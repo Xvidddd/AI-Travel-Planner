@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "../styles/globals.css";
 import { AuroraLayout } from "@/components/layout/AuroraLayout";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 
 export const metadata: Metadata = {
   title: "AuroraVoyage · AI 旅行规划师",
@@ -16,7 +17,9 @@ export default function RootLayout({
   return (
     <html lang="zh-Hans">
       <body>
-        <AuroraLayout>{children}</AuroraLayout>
+        <AuthProvider>
+          <AuroraLayout>{children}</AuroraLayout>
+        </AuthProvider>
       </body>
     </html>
   );
