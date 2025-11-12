@@ -9,6 +9,7 @@
 - ✅ Voice Console + Planner 表单，驱动 Zustand Store
 - ✅ API Status / Plan 路由、DeepSeek 调用与 Supabase Provider
 - ✅ DeepSeek 结构化 POI 输出 + 高德 AuroraMap 实际落点（缺经纬度时自动地理编码）
+- ✅ 浏览器端语音输入（Web Speech API），可替换为讯飞实时语音
 - ✅ 环境变量模板 `.env.example`
 - ✅ Dockerfile + docker-compose + 脚本化 setup/dev/check
 
