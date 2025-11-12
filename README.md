@@ -35,3 +35,12 @@ npm run dev
 7. **安装提示**：若 `nvm install` 拉取版本失败，请在宿主机自行下载 Node 20.x 二进制后放入 `~/.nvm` 的 `bin` 目录或使用镜像源，再运行 `./scripts/setup.sh`。
 
 更多需求、架构、计划、UI 与测试细节见 `docs/` 目录。
+
+## Docker 一键运行
+
+项目提供开箱即用的镜像（已包含 `.env` 中配置好的键值）：
+```bash
+docker build -t auroravoyage .
+docker run --name auroravoyage -p 3000:3000 auroravoyage
+```
+构建阶段会自动复制 `.env` 到容器内，运行后访问 `http://localhost:3000` 即可。
