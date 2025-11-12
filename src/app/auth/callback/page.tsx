@@ -22,7 +22,7 @@ export default function AuthCallbackPage() {
       return;
     }
     const exchange = async () => {
-      const { error } = await supabase.auth.exchangeCodeForSession({ code });
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) {
         setStatus(`登录失败：${error.message}`);
         return;

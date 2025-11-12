@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { ItineraryPlan } from "@/types/itinerary";
+import { ExpenseEntry } from "@/types/expense";
 
 interface PlannerFormState {
   destination: string;
@@ -19,6 +20,9 @@ type PlannerStore = {
   hydrateForm: (partial: Partial<PlannerFormState>) => void;
   setTranscript: (text: string) => void;
   setItinerary: (plan: ItineraryPlan) => void;
+  expenses: ExpenseEntry[];
+  addExpense: (expense: ExpenseEntry) => void;
+  setExpenses: (expenses: ExpenseEntry[]) => void;
   reset: () => void;
 };
 
@@ -49,5 +53,11 @@ export const usePlannerStore = create<PlannerStore>((set) => ({
     })),
   setTranscript: (text) => set({ transcript: text }),
   setItinerary: (plan) => set({ itinerary: plan }),
+  expenses: [],
+  addExpense: (expense) =>
+    set((state) => ({
+      expenses: [expense, ...state.expenses],
+    })),
+  setExpenses: (expenses) => set({ expenses }),
   reset: () => set({ form: defaultForm, transcript: defaultForm.destination, itinerary: undefined }),
 }));

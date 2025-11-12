@@ -12,6 +12,7 @@
 - ✅ 浏览器端语音输入（Web Speech API），可替换为讯飞实时语音
 - ✅ 语音→文本→表单解析：调用 LLM 将口述转为目的地/天数/预算等字段，用户确认后再生成行程
 - ✅ Supabase Auth（魔法链接登录、实时会话、主页内登录面板）
+- ✅ 预算/记账：表单记账 + `/api/expenses` 接口（Supabase 写入失败时自动降级为本地）
 - ✅ 环境变量模板 `.env.example`
 - ✅ Dockerfile + docker-compose + 脚本化 setup/dev/check
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { usePlannerStore } from "@/lib/store/planner";
+import { ExpensePanel } from "@/components/panels/ExpensePanel";
 
 export function BudgetPanel() {
   const itinerary = usePlannerStore((state) => state.itinerary);
@@ -55,6 +56,9 @@ export function BudgetPanel() {
             </li>
           ))}
         </ul>
+      </div>
+      <div className="mt-6 border-t border-slate-100/70 pt-6">
+        <ExpensePanel />
       </div>
     </section>
   );
