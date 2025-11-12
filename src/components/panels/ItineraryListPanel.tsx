@@ -109,7 +109,7 @@ export function ItineraryListPanel() {
           {list.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/70 px-4 py-2"
+              className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-white/70 px-4 py-2"
             >
               <div>
                 <p className="font-semibold text-slate-700">{item.title ?? item.destination ?? "未命名"}</p>
