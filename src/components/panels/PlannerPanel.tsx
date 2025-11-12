@@ -46,6 +46,7 @@ async function requestPlan(form: {
         lng?: number;
       }>;
     }>;
+    budget?: Array<{ category?: string; amount?: number }>;
   };
 
   const plan: ItineraryPlan = {
@@ -70,6 +71,10 @@ async function requestPlan(form: {
     })),
     currency: "CNY",
     title: `${payload.destination} AI 行程`,
+    budgetDetail: data.budget?.map((item) => ({
+      category: item.category ?? "其他",
+      amount: Number(item.amount) || 0,
+    })),
   };
 
   return plan;

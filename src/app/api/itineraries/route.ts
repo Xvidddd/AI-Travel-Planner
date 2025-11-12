@@ -26,6 +26,7 @@ export async function POST(request: Request) {
         currency: payload.currency ?? "CNY",
         preferences: payload.preferences,
         status: "draft",
+        budget_detail: payload.budgetDetail ?? null,
       })
       .select("id")
       .single();
@@ -114,7 +115,7 @@ export async function GET(request: Request) {
     if (itineraryId) {
       const { data: itinerary, error } = await supabase
         .from("itineraries")
-        .select("id, title, destination, start_date, end_date, budget, preferences, inserted_at")
+        .select("id, title, destination, start_date, end_date, budget, preferences, inserted_at, budget_detail")
         .eq("id", itineraryId)
         .eq("user_id", userId)
         .single();
@@ -150,6 +151,12 @@ export async function GET(request: Request) {
         preferences: Array.isArray(itinerary.preferences) ? itinerary.preferences : [],
         summary: itinerary.title ?? "",
         title: itinerary.title ?? "",
+        budgetDetail: Array.isArray(itinerary.budget_detail)
+          ? itinerary.budget_detail.map((item: any) => ({
+              category: item.category ?? "其他",
+              amount: Number(item.amount) || 0,
+            }))
+          : undefined,
         itinerary: (days ?? []).map((day) => ({
           day: day.day_index,
           summary: day.summary ?? "",

@@ -41,6 +41,19 @@ export function BudgetPanel() {
           ))}
         </ul>
       </div>
+      {itinerary?.budgetDetail && itinerary.budgetDetail.length > 0 && (
+        <div className="mt-6 border-t border-slate-100/70 pt-4">
+          <p className="text-xs uppercase tracking-[0.4em] text-slate-400">AI 预算预测</p>
+          <ul className="mt-3 space-y-2 text-sm text-slate-600">
+            {itinerary.budgetDetail.map((item) => (
+              <li key={item.category} className="flex items-center justify-between rounded-full bg-white/80 px-4 py-2">
+                <span>{item.category}</span>
+                <span>¥{item.amount.toLocaleString()}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="mt-6 border-t border-slate-100/70 pt-6">
         <ExpensePanel />
       </div>

@@ -18,6 +18,11 @@ export interface DayPlan {
   activities: ActivityItem[];
 }
 
+export interface BudgetBreakdown {
+  category: string;
+  amount: number;
+}
+
 export interface ItineraryPlan {
   id?: string;
   destination: string;
@@ -30,4 +35,5 @@ export interface ItineraryPlan {
   currency?: string;
   title?: string;
   userId?: string;
+  budgetDetail?: BudgetBreakdown[];
 }

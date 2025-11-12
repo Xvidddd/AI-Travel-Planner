@@ -27,12 +27,9 @@ export function TimelinePanel() {
 
   return (
     <section className="rounded-2xl border border-white/70 bg-white/80 p-6 shadow-lg shadow-slate-200/40">
-      <header className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.4em] text-slate-400">Journey Stack</p>
-          <h3 className="text-xl font-semibold text-slate-800">行程时间线</h3>
-        </div>
-        <button className="text-xs font-semibold text-slate-500 underline">查看全部</button>
+      <header className="mb-4">
+        <p className="text-xs uppercase tracking-[0.4em] text-slate-400">Journey Stack</p>
+        <h3 className="text-xl font-semibold text-slate-800">行程时间线</h3>
       </header>
       <ol className="space-y-5">
         {content.map((day) => (

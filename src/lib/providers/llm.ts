@@ -28,6 +28,7 @@ export type PlannerPayload = {
 type PlannerLLMResponse = {
   summary: string;
   days: PlannerLLMDay[];
+  budget?: Array<{ category: string; amount: number }>;
 };
 
 export type ExpenseIntent = {
@@ -97,6 +98,7 @@ async function callDeepseek(payload: PlannerPayload): Promise<PlannerLLMResponse
   const systemPrompt = `你是 AuroraVoyage 的 AI 旅行规划师，需要返回严格的 JSON，字段含义如下：
 {
   "summary": string,
+  "budget": [{"category": string, "amount": number}],
   "days": [
     {
       "day": number,
@@ -156,6 +158,7 @@ async function callDeepseek(payload: PlannerPayload): Promise<PlannerLLMResponse
     const parsed = JSON.parse(content) as PlannerLLMResponse;
     return {
       summary: parsed.summary,
+      budget: parsed.budget,
       days: parsed.days.map((day, index) => ({
         day: day.day ?? index + 1,
         focus: day.focus ?? "AI 行程亮点",
