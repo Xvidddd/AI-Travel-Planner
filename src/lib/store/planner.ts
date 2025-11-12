@@ -67,10 +67,23 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
     })),
   setTranscript: (text) => set({ transcript: text }),
   setItinerary: (plan) =>
-    set((state) => ({
-      itinerary: plan,
-      activeItineraryId: plan.id ?? state.activeItineraryId,
-    })),
+    set((state) => {
+      const nextForm: PlannerFormState = {
+        ...state.form,
+        title: plan.title ?? state.form.title,
+        destination: plan.destination ?? state.form.destination,
+        days: plan.days ?? state.form.days,
+        budget: plan.budget ?? state.form.budget,
+        personas: state.form.personas,
+        preferences: state.form.preferences,
+      };
+      return {
+        itinerary: plan,
+        activeItineraryId: plan.id ?? state.activeItineraryId,
+        form: nextForm,
+        budgetSnapshot: computeBudgetSnapshot(state.expenses, nextForm.budget),
+      };
+    }),
   expenses: [],
   addExpense: (expense) =>
     set((state) => {

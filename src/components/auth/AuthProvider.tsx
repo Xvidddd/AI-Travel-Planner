@@ -41,7 +41,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: session?.user ?? null,
     loading,
     signOut: async () => {
-      await supabase.auth.signOut();
+      const clearLocalSession = async () => {
+        try {
+          await supabase.auth.signOut({ scope: "local" });
+        } catch (error) {
+          console.warn("local signOut failed", error);
+        }
+        if (typeof window !== "undefined") {
+          Object.keys(localStorage)
+            .filter((key) => key.includes("supabase.auth.token") || key.includes("sb-"))
+            .forEach((key) => localStorage.removeItem(key));
+        }
+        setSession(null);
+      };
+
+      try {
+        await supabase.auth.signOut({ scope: "global" });
+      } catch (error) {
+        if (error instanceof TypeError) {
+          console.warn("supabase global signOut network error, clearing local session only");
+          await clearLocalSession();
+          return;
+        }
+        throw error;
+      }
+
+      await clearLocalSession();
     },
   };
 

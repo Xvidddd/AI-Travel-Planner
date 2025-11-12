@@ -11,26 +11,58 @@ export default function AuthCallbackPage() {
   const [status, setStatus] = useState("正在处理登录...");
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const errorDescription = searchParams.get("error_description");
     if (errorDescription) {
       setStatus(`登录失败：${errorDescription}`);
       return;
     }
-    const code = searchParams.get("code");
-    if (!code) {
-      setStatus("缺少 code 参数");
+
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+    if (accessToken && refreshToken) {
+      const setHashSession = async () => {
+        try {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) throw error;
+          window.history.replaceState({}, document.title, "/");
+          setStatus("登录成功，正在跳转...");
+          setTimeout(() => router.replace("/"), 1200);
+        } catch (err) {
+          setStatus(`登录失败：${(err as Error).message}`);
+        }
+      };
+      setHashSession();
       return;
     }
+
+    const code = searchParams.get("code");
+    const verifier = searchParams.get("code_verifier");
+    if (!code || !verifier) {
+      setStatus("登录完成，正在跳转...");
+      setTimeout(() => router.replace("/"), 1000);
+      return;
+    }
+
     const exchange = async () => {
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) {
-        setStatus(`登录失败：${error.message}`);
-        return;
+      try {
+        const { error } = await (supabase.auth as any).exchangeCodeForSession({
+          authCode: code,
+          codeVerifier: verifier,
+        });
+        if (error) {
+          throw error;
+        }
+        setStatus("登录成功，正在跳转...");
+        setTimeout(() => router.replace("/"), 1200);
+      } catch (err) {
+        setStatus(`登录失败：${(err as Error).message}`);
       }
-      setStatus("登录成功，正在跳转...");
-      setTimeout(() => {
-        router.replace("/");
-      }, 1500);
     };
     exchange();
   }, [router, searchParams, supabase]);

@@ -38,9 +38,6 @@ export function TimelinePanel() {
               <span className="text-sm font-semibold uppercase tracking-wide text-slate-400">
                 {day.day}
               </span>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">
-                {itinerary ? "AI 版本 beta" : "示例"}
-              </span>
             </div>
             <p className="mt-1 text-base font-medium text-slate-700">{day.summary}</p>
             <ul className="mt-3 list-disc space-y-1 pl-4 text-sm text-slate-600">
