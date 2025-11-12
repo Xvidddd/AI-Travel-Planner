@@ -14,10 +14,10 @@
 ## 快速开始
 
 > **开箱即用（推荐验收）**
-> 1. 在 Release 中下载加密的 `auroravoyage.tar.enc`（密码我会单独提供给验收助教）。
+> 1. 在 Release 中下载加密的 `auroravoyage.tar.enc`
 > 2. 解密并加载镜像：
 >    ```bash
->    openssl enc -aes-256-cbc -d -in auroravoyage.tar.enc -out auroravoyage.tar
+>    openssl enc -aes-256-cbc -d -pbkdf2 -in auroravoyage.tar.enc -out auroravoyage.tar
 >    docker load -i auroravoyage.tar
 >    docker run --rm -p 3000:3000 auroravoyage
 >    ```

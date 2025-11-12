@@ -24,3 +24,6 @@ supabase/.temp
 
 # Keep the reference implementation out of this repo
 example/
+# Release artifacts
+*.tar
+*.tar.enc
