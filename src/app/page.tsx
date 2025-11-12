@@ -2,6 +2,7 @@ import { MapPanel } from "@/components/panels/MapPanel";
 import { TimelinePanel } from "@/components/panels/TimelinePanel";
 import { BudgetPanel } from "@/components/panels/BudgetPanel";
 import { PlannerPanel } from "@/components/panels/PlannerPanel";
+import { ItineraryListPanel } from "@/components/panels/ItineraryListPanel";
 
 export default function HomePage() {
   return (
@@ -12,6 +13,7 @@ export default function HomePage() {
       <div className="space-y-6">
         <PlannerPanel />
         <TimelinePanel />
+        <ItineraryListPanel />
         <BudgetPanel />
       </div>
     </section>

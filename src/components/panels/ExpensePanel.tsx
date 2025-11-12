@@ -11,6 +11,7 @@ export function ExpensePanel() {
   const expenses = usePlannerStore((state) => state.expenses);
   const addExpense = usePlannerStore((state) => state.addExpense);
   const setExpenses = usePlannerStore((state) => state.setExpenses);
+  const removeExpense = usePlannerStore((state) => state.removeExpense);
   const { user, loading: authLoading } = useAuth();
   const [category, setCategory] = useState<ExpenseCategory>("餐饮");
   const [amount, setAmount] = useState(0);
@@ -86,6 +87,23 @@ export function ExpensePanel() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!user?.id) {
+      setStatus("请先登录");
+      return;
+    }
+    removeExpense(id);
+    try {
+      await fetch("/api/expenses", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, userId: user.id }),
+      });
+    } catch (error) {
+      console.error("删除记账失败", error);
+    }
+  };
+
   return (
     <section className="rounded-2xl border border-white/70 bg-white/80 p-6 shadow-lg shadow-slate-200/40">
       <header className="mb-4 flex items-center justify-between">
@@ -140,14 +158,26 @@ export function ExpensePanel() {
       {status && <p className="mt-2 text-xs text-slate-500">{status}</p>}
       <div className="mt-4 space-y-2 text-sm text-slate-600">
         {expenses.slice(0, 5).map((expense) => (
-          <div key={expense.id} className="flex items-center justify-between rounded-2xl bg-white/70 px-4 py-2">
+          <div
+            key={expense.id}
+            className="flex items-center justify-between rounded-2xl bg-white/70 px-4 py-2"
+          >
             <div>
               <p className="font-semibold text-slate-700">{expense.category}</p>
               {expense.note && <p className="text-xs text-slate-400">{expense.note}</p>}
             </div>
-            <div className="text-right">
-              <p className="font-semibold text-slate-800">¥{expense.amount.toFixed(2)}</p>
-              <p className="text-xs text-slate-400">{new Date(expense.createdAt).toLocaleString()}</p>
+            <div className="flex items-center gap-3 text-right">
+              <div>
+                <p className="font-semibold text-slate-800">¥{expense.amount.toFixed(2)}</p>
+                <p className="text-xs text-slate-400">{new Date(expense.createdAt).toLocaleString()}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDelete(expense.id)}
+                className="text-xs text-red-500 hover:text-red-700"
+              >
+                删除
+              </button>
             </div>
           </div>
         ))}

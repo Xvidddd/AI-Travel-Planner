@@ -2,7 +2,6 @@
 
 import { PropsWithChildren, useState } from "react";
 import Link from "next/link";
-import { VoiceConsole } from "@/components/voice/VoiceConsole";
 import { cn } from "@/components/ui/cn";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { AuthPanel } from "@/components/auth/AuthPanel";
@@ -32,7 +31,6 @@ export function AuroraLayout({ children }: PropsWithChildren) {
       <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 lg:px-6">
         {children}
       </main>
-      <VoiceConsole className="fixed bottom-6 right-6" />
       <footer className="mx-auto mt-16 max-w-6xl px-6 pb-10 text-center text-sm text-slate-500">
         © {new Date().getFullYear()} AuroraVoyage
       </footer>

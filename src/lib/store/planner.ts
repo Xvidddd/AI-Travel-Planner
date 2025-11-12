@@ -5,6 +5,7 @@ import { ItineraryPlan } from "@/types/itinerary";
 import { ExpenseEntry } from "@/types/expense";
 
 interface PlannerFormState {
+  title: string;
   destination: string;
   days: number;
   budget: number;
@@ -23,10 +24,12 @@ type PlannerStore = {
   expenses: ExpenseEntry[];
   addExpense: (expense: ExpenseEntry) => void;
   setExpenses: (expenses: ExpenseEntry[]) => void;
+  removeExpense: (id: string) => void;
   reset: () => void;
 };
 
 const defaultForm: PlannerFormState = {
+  title: "我的行程",
   destination: "东京/箱根",
   days: 5,
   budget: 20000,
@@ -59,5 +62,9 @@ export const usePlannerStore = create<PlannerStore>((set) => ({
       expenses: [expense, ...state.expenses],
     })),
   setExpenses: (expenses) => set({ expenses }),
+  removeExpense: (id) =>
+    set((state) => ({
+      expenses: state.expenses.filter((expense) => expense.id !== id),
+    })),
   reset: () => set({ form: defaultForm, transcript: defaultForm.destination, itinerary: undefined }),
 }));

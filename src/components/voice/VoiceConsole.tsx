@@ -7,9 +7,10 @@ import { useState } from "react";
 
 interface VoiceConsoleProps {
   className?: string;
+  inline?: boolean;
 }
 
-export function VoiceConsole({ className }: VoiceConsoleProps) {
+export function VoiceConsole({ className, inline = false }: VoiceConsoleProps) {
   const transcript = usePlannerStore((state) => state.transcript);
   const setTranscript = usePlannerStore((state) => state.setTranscript);
   const hydrateForm = usePlannerStore((state) => state.hydrateForm);
@@ -72,13 +73,12 @@ export function VoiceConsole({ className }: VoiceConsoleProps) {
     }
   };
 
+  const containerClass = inline
+    ? "w-full rounded-3xl border border-white/70 bg-white/90 p-4 shadow"
+    : "pointer-events-auto w-[20rem] rounded-3xl border border-white/70 bg-white/90 p-4 shadow-2xl";
+
   return (
-    <div
-      className={cn(
-        "pointer-events-auto w-[20rem] rounded-3xl border border-white/70 bg-white/90 p-4 shadow-2xl",
-        className,
-      )}
-    >
+    <div className={cn(containerClass, className)}>
       <p className="text-xs uppercase tracking-[0.4em] text-slate-400">Voice Orbit</p>
       <p className="mt-1 text-sm text-slate-600">{transcript}</p>
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}

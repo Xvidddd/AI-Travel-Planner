@@ -89,3 +89,27 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    return NextResponse.json({ error: "Supabase 未配置" }, { status: 500 });
+  }
+
+  const body = (await request.json().catch(() => null)) as { id?: string; userId?: string } | null;
+  if (!body?.id || !body.userId) {
+    return NextResponse.json({ error: "缺少 id 或用户信息" }, { status: 400 });
+  }
+
+  try {
+    const { error } = await supabase
+      .from("expenses")
+      .delete()
+      .eq("id", body.id)
+      .eq("user_id", body.userId);
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
+}

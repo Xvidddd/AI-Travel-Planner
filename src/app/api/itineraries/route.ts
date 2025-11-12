@@ -10,9 +10,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Supabase 未配置" }, { status: 400 });
   }
 
-  const userId = payload.userId ?? process.env.SUPABASE_DEMO_USER_ID;
+  const userId = payload.userId;
   if (!userId) {
-    return NextResponse.json({ error: "缺少 userId，用于写入 Supabase" }, { status: 400 });
+    return NextResponse.json({ error: "缺少用户身份，请登录后再保存行程" }, { status: 401 });
   }
 
   try {
@@ -93,6 +93,114 @@ export async function POST(request: Request) {
     return NextResponse.json({ itineraryId: itineraryRecord.id });
   } catch (error) {
     console.error("Supabase itinerary insert failed", error);
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
+}
+
+export async function GET(request: Request) {
+  const supabase = createSupabaseAdminClient();
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get("userId");
+  const itineraryId = searchParams.get("itineraryId");
+
+  if (!supabase) {
+    return NextResponse.json({ error: "Supabase 未配置" }, { status: 500 });
+  }
+  if (!userId) {
+    return NextResponse.json({ error: "缺少用户身份" }, { status: 401 });
+  }
+
+  try {
+    if (itineraryId) {
+      const { data: itinerary, error } = await supabase
+        .from("itineraries")
+        .select("id, title, destination, start_date, end_date, budget, preferences, inserted_at")
+        .eq("id", itineraryId)
+        .eq("user_id", userId)
+        .single();
+      if (error || !itinerary) throw error ?? new Error("未找到行程");
+
+      const { data: days, error: dayError } = await supabase
+        .from("itinerary_days")
+        .select("id, day_index, summary")
+        .eq("itinerary_id", itineraryId)
+        .order("day_index", { ascending: true });
+      if (dayError) throw dayError;
+
+      const dayIds = days?.map((day) => day.id) ?? [];
+      const { data: activities, error: actError } = await supabase
+        .from("activities")
+        .select("day_id, title, detail, start_time, end_time, location, cost_estimate")
+        .in("day_id", dayIds);
+      if (actError) throw actError;
+
+      const dayMap = new Map<string, typeof activities>();
+      activities?.forEach((activity) => {
+        const list = dayMap.get(activity.day_id) ?? [];
+        list.push(activity);
+        dayMap.set(activity.day_id, list);
+      });
+
+      const itineraryPlan: ItineraryPlan = {
+        id: itinerary.id,
+        destination: itinerary.destination ?? "",
+        days: days?.length ?? 0,
+        budget: itinerary.budget ?? 0,
+        personas: [],
+        preferences: Array.isArray(itinerary.preferences) ? itinerary.preferences : [],
+        summary: itinerary.title ?? "",
+        title: itinerary.title ?? "",
+        itinerary: (days ?? []).map((day) => ({
+          day: day.day_index,
+          summary: day.summary ?? "",
+          activities: (dayMap.get(day.id) ?? []).map((activity) => ({
+            title: activity.title ?? "",
+            detail: activity.detail ?? "",
+            time: activity.start_time ?? "",
+            poi: activity.location?.poi,
+            address: activity.location?.address,
+            lat: activity.location?.lat,
+            lng: activity.location?.lng,
+            costEstimate: activity.cost_estimate ?? undefined,
+          })),
+        })),
+      };
+
+      return NextResponse.json({ itinerary: itineraryPlan });
+    }
+
+    const { data, error } = await supabase
+      .from("itineraries")
+      .select("id, title, destination, budget, inserted_at")
+      .eq("user_id", userId)
+      .order("inserted_at", { ascending: false })
+      .limit(20);
+    if (error) throw error;
+
+    return NextResponse.json({ itineraries: data ?? [] });
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    return NextResponse.json({ error: "Supabase 未配置" }, { status: 500 });
+  }
+  const body = (await request.json().catch(() => null)) as { id?: string; userId?: string } | null;
+  if (!body?.id || !body.userId) {
+    return NextResponse.json({ error: "缺少参数" }, { status: 400 });
+  }
+  try {
+    const { error } = await supabase
+      .from("itineraries")
+      .delete()
+      .eq("id", body.id)
+      .eq("user_id", body.userId);
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

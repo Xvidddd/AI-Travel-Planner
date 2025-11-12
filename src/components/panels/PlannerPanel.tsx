@@ -3,8 +3,11 @@
 import { useState, useTransition } from "react";
 import { usePlannerStore } from "@/lib/store/planner";
 import { ItineraryPlan } from "@/types/itinerary";
+import { VoiceConsole } from "@/components/voice/VoiceConsole";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 async function requestPlan(form: {
+  title?: string;
   destination: string;
   days: number;
   budget: number;
@@ -72,11 +75,11 @@ async function requestPlan(form: {
   return plan;
 }
 
-async function persistPlan(plan: ItineraryPlan) {
+async function persistPlan(plan: ItineraryPlan, userId: string) {
   const res = await fetch("/api/itineraries", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(plan),
+    body: JSON.stringify({ ...plan, userId }),
   });
 
   const json = (await res.json().catch(() => ({}))) as { itineraryId?: string; error?: string };
@@ -90,6 +93,7 @@ async function persistPlan(plan: ItineraryPlan) {
 
 export function PlannerPanel() {
   const { form, setField, setItinerary } = usePlannerStore();
+  const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -99,6 +103,7 @@ export function PlannerPanel() {
     setError(null);
     const formData = new FormData(event.currentTarget);
     const nextForm = {
+      title: String(formData.get("title") ?? form.title),
       destination: String(formData.get("destination") ?? form.destination),
       days: Number(formData.get("days") ?? form.days),
       budget: Number(formData.get("budget") ?? form.budget),
@@ -108,11 +113,19 @@ export function PlannerPanel() {
 
     startTransition(async () => {
       try {
+        if (!user?.id) {
+          setError("请先登录再生成行程");
+          return;
+        }
         const plan = await requestPlan(nextForm);
-        setItinerary(plan);
+        const titledPlan: ItineraryPlan = {
+          ...plan,
+          title: nextForm.title || plan.title || `${nextForm.destination} 行程`,
+        };
+        setItinerary(titledPlan);
         setStatus("AI 行程生成成功，正在写入 Supabase...");
         try {
-          const { itineraryId } = await persistPlan(plan);
+          const { itineraryId } = await persistPlan(titledPlan, user.id);
           if (itineraryId) {
             setStatus(`已保存至 Supabase (ID: ${itineraryId.slice(0, 8)}…)`);
           } else {
@@ -138,6 +151,16 @@ export function PlannerPanel() {
         <h3 className="text-xl font-semibold text-slate-800">行程需求</h3>
       </header>
       <form className="space-y-4" onSubmit={handleSubmit}>
+        <label className="text-sm text-slate-600">
+          行程名称
+          <input
+            className="mt-1 w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-2 text-slate-700 focus:border-aurora-blue focus:outline-none"
+            name="title"
+            value={form.title}
+            onChange={(e) => setField("title", e.target.value)}
+            placeholder="例如：东京亲子游计划"
+          />
+        </label>
         <div className="grid gap-4 lg:grid-cols-2">
           <label className="text-sm text-slate-600">
             目的地
@@ -200,6 +223,9 @@ export function PlannerPanel() {
           {isPending ? "AI 正在规划..." : "生成 AI 行程"}
         </button>
       </form>
+      <div className="mt-6">
+        <VoiceConsole inline />
+      </div>
     </section>
   );
 }

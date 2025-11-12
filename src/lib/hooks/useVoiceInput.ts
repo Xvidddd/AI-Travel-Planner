@@ -8,8 +8,9 @@ interface RecognitionInstance {
   interimResults: boolean;
   start: () => void;
   stop: () => void;
-  abort: () => void;
+  abort?: () => void;
   onaudioend?: () => void;
+  onend?: () => void;
   onresult?: (event: RecognitionEvent) => void;
   onerror?: (event: { error?: string }) => void;
 }
@@ -31,6 +32,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const [transcript, setTranscript] = useState("按下开始语音");
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<RecognitionInstance | null>(null);
+  const recordingRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -48,7 +50,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     const recognition = new RecognitionConstructor() as RecognitionInstance;
     recognition.lang = locale;
     recognition.interimResults = true;
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.onresult = (event: RecognitionEvent) => {
       const latest = Array.from(event.results)
         .map((result) => result[0]?.transcript ?? "")
@@ -58,11 +60,27 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     };
     recognition.onerror = (evt: { error?: string }) => {
       setError(evt.error ?? "语音识别失败");
+      recordingRef.current = false;
       setIsRecording(false);
     };
-    recognition.onaudioend = () => {
-      setIsRecording(false);
+    const resume = () => {
+      if (!recordingRef.current) {
+        setIsRecording(false);
+        return;
+      }
+      setTimeout(() => {
+        if (!recordingRef.current) return;
+        try {
+          recognition.start();
+        } catch (err) {
+          console.error("Speech restart failed", err);
+          recordingRef.current = false;
+          setIsRecording(false);
+        }
+      }, 400);
     };
+    recognition.onaudioend = resume;
+    recognition.onend = resume;
 
     recognitionRef.current = recognition;
     return () => {
@@ -79,11 +97,18 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     try {
       setError(null);
       setTranscript("正在聆听，请描述你的旅行需求...");
+      try {
+        recognitionRef.current.abort?.();
+      } catch (err) {
+        console.warn("Speech abort failed", err);
+      }
       recognitionRef.current.start();
       setIsRecording(true);
+      recordingRef.current = true;
     } catch (err) {
       setError((err as Error).message);
       setIsRecording(false);
+      recordingRef.current = false;
     }
   }, []);
 
@@ -93,6 +118,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     }
     recognitionRef.current.stop();
     setIsRecording(false);
+    recordingRef.current = false;
   }, []);
 
   return {
