@@ -2,27 +2,32 @@
 
 这是一个全新的 Web 版 AI 旅行规划师项目骨架，功能目标与 `example/` 目录下的参考实现保持一致，但在视觉与交互设计上采用「浅色极光」风格：地图主视图 + 双栏卡片 + 浮动语音面板。
 
-## 当前状态
-- ✅ Git 仓库初始化（main 分支）
-- ✅ Next.js + TypeScript + Tailwind 基础结构
-- ✅ 自定义布局（AuroraLayout）、地图/时间线/预算面板
-- ✅ Voice Console + Planner 表单，驱动 Zustand Store
-- ✅ API Status / Plan 路由、DeepSeek 调用与 Supabase Provider
-- ✅ DeepSeek 结构化 POI 输出 + 高德 AuroraMap 实际落点（缺经纬度时自动地理编码）
-- ✅ 浏览器端语音输入（Web Speech API），可替换为讯飞实时语音
-- ✅ 语音→文本→表单解析：调用 LLM 将口述转为目的地/天数/预算等字段，用户确认后再生成行程
-- ✅ Supabase Auth（魔法链接登录、实时会话、主页内登录面板）
-- ✅ 预算/记账：表单记账 + `/api/expenses` 接口（Supabase 写入失败时自动降级为本地）
-- ✅ 行程管理：保存行程需登录，历史行程面板可加载/删除已存计划；行程生成时同步 AI 预算预测，预算与记账与行程绑定，并支持语音记账
-- ✅ 行程管理：保存行程需登录，历史行程面板可加载已存计划
-- ✅ 环境变量模板 `.env.example`
-- ✅ Dockerfile + docker-compose + 脚本化 setup/dev/check
+## 功能概览
+- ✅ Next.js + TypeScript + Tailwind 骨架，AuroraVoyage 三列布局（地图 / Planner / 预算）
+- ✅ DeepSeek + 高德地图：实时行程规划、POI 落点、AI 预算预测
+- ✅ Supabase Auth：魔法链接登录、会话同步、行程列表（加载/删除）
+- ✅ 预算与记账：按行程绑定，支持表单记账、语音记账、AI 预算分析
+- ✅ 语音交互：语音规划需求、语音记账解析，均可手动确认后提交
+- ✅ 完整 API：`/api/plan`、`/api/itineraries`、`/api/expenses`、`/api/voice/*`、`/api/status`
+- ✅ Dockerfile / 脚本化 setup；`.env` 在镜像内一并打包，开箱即用
 
 ## 快速开始
-```bash
-npm install
-npm run dev
-```
+
+> **开箱即用（推荐验收）**
+> 1. 在 Release 中下载加密的 `auroravoyage.tar.enc`（密码我会单独提供给验收助教）。
+> 2. 解密并加载镜像：
+>    ```bash
+>    openssl enc -aes-256-cbc -d -in auroravoyage.tar.enc -out auroravoyage.tar
+>    docker load -i auroravoyage.tar
+>    docker run --rm -p 3000:3000 auroravoyage
+>    ```
+> 3. 浏览器访问 `http://localhost:3000` 即可验收。
+
+> **本地开发模式**
+> ```bash
+> npm install
+> npm run dev
+> ```
 访问 `http://localhost:3000` 即可看到骨架 UI。所有功能模块仍使用 mock 数据，用于后续接入真实 API。
 
 ## 后续开发建议
@@ -36,9 +41,8 @@ npm run dev
 
 更多需求、架构、计划、UI 与测试细节见 `docs/` 目录。
 
-## Docker 一键运行
+## Docker 构建和运行
 
-项目提供开箱即用的镜像（已包含 `.env` 中配置好的键值）：
 ```bash
 docker build -t auroravoyage .
 docker run --name auroravoyage -p 3000:3000 auroravoyage
