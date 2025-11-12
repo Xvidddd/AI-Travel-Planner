@@ -16,6 +16,7 @@ type PlannerStore = {
   transcript: string;
   itinerary?: ItineraryPlan;
   setField: <K extends keyof PlannerFormState>(key: K, value: PlannerFormState[K]) => void;
+  hydrateForm: (partial: Partial<PlannerFormState>) => void;
   setTranscript: (text: string) => void;
   setItinerary: (plan: ItineraryPlan) => void;
   reset: () => void;
@@ -37,6 +38,13 @@ export const usePlannerStore = create<PlannerStore>((set) => ({
       form: {
         ...state.form,
         [key]: value,
+      },
+    })),
+  hydrateForm: (partial) =>
+    set((state) => ({
+      form: {
+        ...state.form,
+        ...partial,
       },
     })),
   setTranscript: (text) => set({ transcript: text }),

@@ -1,4 +1,5 @@
 import "server-only";
+import { PlannerIntent } from "@/types/voice";
 
 type PlannerLLMActivity = {
   title: string;
@@ -50,6 +51,18 @@ export async function generateItinerary(payload: PlannerPayload): Promise<Planne
       ],
     })),
   };
+}
+
+export async function parseVoiceToPlanner(transcript: string): Promise<PlannerIntent> {
+  if (!transcript.trim()) {
+    return {};
+  }
+
+  if (DEFAULT_PROVIDER === "deepseek") {
+    return callDeepseekIntent(transcript);
+  }
+
+  return fallbackIntent(transcript);
 }
 
 async function callDeepseek(payload: PlannerPayload): Promise<PlannerLLMResponse> {
@@ -145,4 +158,87 @@ async function callDeepseek(payload: PlannerPayload): Promise<PlannerLLMResponse
 function sanitizeNumber(value: unknown): number | undefined {
   const num = Number(value);
   return Number.isFinite(num) ? num : undefined;
+}
+
+async function callDeepseekIntent(transcript: string): Promise<PlannerIntent> {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  const endpoint = process.env.DEEPSEEK_API_ENDPOINT ?? "https://api.deepseek.com/v1";
+  const model = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
+
+  if (!apiKey) {
+    throw new Error("缺少 DEEPSEEK_API_KEY，无法解析语音输入");
+  }
+
+  const systemPrompt = `你是旅行助手，请把用户的一段话提取成结构化 JSON，字段如下：
+{
+  "destination": string,
+  "days": number,
+  "budget": number,
+  "personas": string,
+  "preferences": string
+}
+字段允许为空，但必须给出合理推测，数值只填写整数，预算单位默认为人民币。`;
+
+  const body = {
+    model,
+    temperature: 0.2,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system" as const, content: systemPrompt },
+      { role: "user" as const, content: transcript },
+    ],
+  };
+
+  const response = await fetch(`${endpoint}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`DeepSeek 语音解析失败：${response.status} ${errorText}`);
+  }
+
+  const completion = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const content = completion.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error("DeepSeek 语音解析未返回内容");
+  }
+
+  const intent = JSON.parse(content) as PlannerIntent;
+  return normalizeIntent(intent, transcript);
+}
+
+function fallbackIntent(transcript: string): PlannerIntent {
+  const numbers = transcript.match(/\d+/g)?.map((n) => Number(n)) ?? [];
+  const budget = numbers.find((n) => n >= 1000) ?? undefined;
+  const days = numbers.find((n) => n > 0 && n <= 30) ?? undefined;
+  return normalizeIntent({
+    budget,
+    days,
+    destination: transcript.includes("日本") ? "日本" : undefined,
+  }, transcript);
+}
+
+function normalizeIntent(intent: PlannerIntent, fallbackText: string): PlannerIntent {
+  const normalized: PlannerIntent = {};
+  if (intent.destination) normalized.destination = intent.destination.trim();
+  if (typeof intent.days === "number" && intent.days > 0) normalized.days = intent.days;
+  if (typeof intent.budget === "number" && intent.budget > 0) normalized.budget = intent.budget;
+  if (intent.personas) normalized.personas = intent.personas.trim();
+  if (intent.preferences) normalized.preferences = intent.preferences.trim();
+
+  return {
+    destination: normalized.destination,
+    days: normalized.days,
+    budget: normalized.budget,
+    personas: normalized.personas,
+    preferences: normalized.preferences,
+  };
 }
